@@ -32,7 +32,7 @@ import { KIND_NAME } from './kinds.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_URL = 'https://github.com/wonseokjung/reversebusiness';
-export const LIMITS = { maxPages: 5, delayMs: 2000, maxDelayMs: 60000, timeoutMs: 15000, maxBytes: 2_000_000, maxRequests: 14, maxRedirects: 3, renderBudgetMs: 75000, reaInspectMs: 60000, reaBundleMs: 150000, flowClicks: 8 };
+export const LIMITS = { maxPages: 5, delayMs: 2000, maxDelayMs: 60000, timeoutMs: 15000, maxBytes: 2_000_000, maxRequests: 14, maxRedirects: 3, renderBudgetMs: 75000, reaInspectMs: 60000, reaBundleMs: 60000, flowClicks: 8 };
 // 받은 HTML 의 글이 이보다 적으면 얇다고 본다.
 export const THIN_CHARS = 1500;
 export const userAgent = (version = '0') => `rebiz/${version} (+${REPO_URL}; reads a few public pages, 2s apart, no login)`;
@@ -246,7 +246,8 @@ export function readPage(html, pageUrl, { rects = null } = {}) {
     if (k && m.attrs.content && !/verification|token|csrf|nonce/i.test(k)) metas[k] = scrub(m.attrs.content);
   }
   const title = scrub(rawText(byTag(head, 'title')[0] || { children: [] }));
-  const lines = uniq(textLines(body).map(scrub).filter((l) => l.length >= 2));
+  const BLOCK_NOISE = /^(ERR_BLOCKED_BY_CLIENT|Chrome에서 차단한 페이지입니다\.|새로고침|.+이\(가\) 차단됨)$/i;
+  const lines = uniq(textLines(body).map(scrub).filter((l) => l.length >= 2 && !BLOCK_NOISE.test(l)));
   const visible = lines.join(' ');
   const headings = find(body, (c) => /^h[1-3]$/.test(c.tag)).map((h) => ({ level: Number(h.tag[1]), text: scrub(textOf(h)) })).filter((h) => h.text);
   const base = new URL(pageUrl);
@@ -556,7 +557,7 @@ export async function collect(input, { version = '0', maxPages = LIMITS.maxPages
       onStep('속 읽기: REA analyze-web-bundle (큰 스크립트는 시간 한도에서 멈춥니다)');
       const file = path.join(evidenceDir, '02_bundle_evidence.json');
       try { fs.mkdirSync(evidenceDir, { recursive: true }); fs.rmSync(file, { force: true }); } catch { /* 폴더 문제는 아래에서 실패로 남는다 */ }
-      const r = await runRea(reaRun, ['analyze-web-bundle', renderer.endpoint, tab.targetId, '--allowed-origins', start.origin, '--detail', 'summary', '--evidence_output', file, '--view', '{"kind":"web-bundle","collection":"summary"}', '--analysis-timeout-ms', '30000', '--total-analysis-timeout-ms', '100000', '--format', 'json'], { timeoutMs: f.limits.reaBundleMs });
+      const r = await runRea(reaRun, ['analyze-web-bundle', renderer.endpoint, tab.targetId, '--allowed-origins', start.origin, '--detail', 'summary', '--evidence_output', file, '--view', '{"kind":"web-bundle","collection":"summary"}', '--analysis-timeout-ms', '15000', '--total-analysis-timeout-ms', '45000', '--format', 'json'], { timeoutMs: f.limits.reaBundleMs });
       try {
         const rec = recordsOf(JSON.parse(fs.readFileSync(file, 'utf8'))).find((x) => x.operation === 'analyze_web_bundle');
         if (rec) { bundle = readBundleFacts(rec); d.file = 'evidence/02_bundle_evidence.json'; }
@@ -824,7 +825,7 @@ export function buildDraftFromPages(c, { relation = 'third-party', today = new D
       terms: {
         // checked 는 약관 조항까지 사람이 읽었을 때만 쓴다. 자동 초안은 거기까지 가지 않는다.
         status: relation === 'own' ? 'not-applicable' : (termsPage || (c.robots && c.robots.found)) ? 'robots-only' : 'not-found',
-        note: `${relation === 'own' ? '내 것이라 약관 확인은 해당 없다. ' : ''}${c.robots && c.robots.found ? `robots.txt 를 받았고 읽은 주소는 모두 허용 범위였다 (Disallow ${c.robots.disallow.length}줄).` : 'robots.txt 에 규칙이 없었다.'}${relation === 'own' ? '' : termsPage ? ' 이용약관 페이지를 받아 두었으나 조항은 아직 읽지 않았다. 사람이 읽은 뒤 checked 로 바꾼다.' : ' 이용약관 링크는 찾지 못했다. 사람이 찾아 읽은 뒤 checked 로 바꾼다.'}`,
+        note: `${relation === 'own' ? '내 것이라 약관 확인은 해당 없다. ' : ''}${c.robots && c.robots.found ? `robots.txt 를 받았고 읽은 주소는 모두 허용 범위였다 (Disallow ${c.robots.disallow.length}줄).` : 'robots.txt 에 규칙이 없었다.'}${relation === 'own' ? '' : termsPage ? ` 이용약관 페이지를 받아 두었으나 조항은 아직 읽지 않았다${termsPage.textLength < 200 ? ` (글자 ${termsPage.textLength}자, 본문이 짧아 직접 확인 필요)` : ''}. 사람이 읽은 뒤 checked 로 바꾼다.` : ' 이용약관 링크는 찾지 못했다. 사람이 찾아 읽은 뒤 checked 로 바꾼다.'}`,
         evidence: [R, termsPage ? ev.get(termsPage) : null].filter(Boolean),
       },
       one_line: '',

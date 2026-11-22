@@ -36,7 +36,7 @@ export function classifyHosts(hosts, ownHost = '') {
   const groups = new Map();
   for (const h of hosts) {
     const host = String(typeof h === 'string' ? h : h.host || '').toLowerCase();
-    if (!host || host.replace(/^www\./, '') === own || /^(127\.0\.0\.1|localhost)$/.test(host)) continue;
+    if (!host || host.replace(/^www\./, '') === own || /^(127\.0\.0\.1|localhost|local\.adguard\.org)$/.test(host) || /\.local$/.test(host)) continue;
     const hit = SERVICES.find(([, , re]) => re.test(host));
     const kind = hit ? hit[0] : 'other';
     const name = hit ? hit[1] : host;

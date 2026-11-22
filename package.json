@@ -1,6 +1,6 @@
 {
   "name": "rebiz",
-  "version": "0.6.0",
+  "version": "0.2.0",
   "description": "reversebusiness: 사업 웹사이트 주소 하나를 넣으면 그 사업을 해부한다. 읽기(겉, 흐름, 속), 해부(6칸), 내 버전 만들기, 검사. CONNECT AI LAB 오픈소스 1호.",
   "private": true,
   "type": "module",

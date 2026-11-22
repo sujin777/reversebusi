@@ -626,7 +626,7 @@ test('도움말: build, apply, video, fill 이 실제 명령으로 나오고, �
     const v = run(dir, ['view', 'report.json', '--no-open']);
     assert.equal(v.status, 0, v.out);
     assert.match(v.out, /다음 {2}rebiz video report\.json/);
-    assert.equal(JSON.parse(read(ROOT, 'package.json')).version, '0.6.0');
+    assert.equal(JSON.parse(read(ROOT, 'package.json')).version, '0.2.0');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
